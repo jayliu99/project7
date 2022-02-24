@@ -5,9 +5,20 @@ import numpy as np
 from nn import preprocess as pp
 from itertools import repeat # For test_sample_seqs
 import random # For test_sample_seqs
+from nn import NeuralNetwork # for testing NN functions
 
 
 # TODO: Write your test functions and associated docstrings below.
+
+# Create a dummy NN to use in testing
+arch = [{'input_dim': 64, 'output_dim': 32}, {'input_dim': 32, 'output_dim': 8}]
+my_nn = NeuralNetwork(arch, 
+                 lr=0.5,
+                 seed=3,
+                 batch_size=5,
+                 epochs=5,
+                 loss_function="sigmoid")
+
 
 def test_forward():
     pass
@@ -26,7 +37,11 @@ def test_predict():
 
 
 def test_binary_cross_entropy():
-    pass
+    """
+    Check that binary cross entropy loss is calculated correctly.
+    """
+    bce_error = round(my_nn._binary_cross_entropy(np.array([1,0]), np.array([0,1])))
+    assert(bce_error == 12)
 
 
 def test_binary_cross_entropy_backprop():
@@ -34,7 +49,10 @@ def test_binary_cross_entropy_backprop():
 
 
 def test_mean_squared_error():
-    pass
+    """
+    Check that MSE loss is calculated correctly.
+    """
+    assert(my_nn._mean_squared_error(np.array([0, 1]), np.array([1, 0])) == 1)
 
 
 def test_mean_squared_error_backprop():
@@ -70,7 +88,7 @@ def test_sample_seqs():
     seqs = [item[0] for item in toy_data]
     labels = [item[1] for item in toy_data]
 
-    # Assert that sample is balanced
+    # Assert that returned sample is balanced
     sample_seqs, sample_labels = pp.sample_seqs(seqs, labels, 20)
     num_pos_labels = sample_labels.count(True)
     num_neg_labels = sample_labels.count(False)
