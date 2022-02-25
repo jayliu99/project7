@@ -27,14 +27,14 @@ def main():
                  seed=3,
                  batch_size=5,
                  epochs=5,
-                 loss_function="sigmoid")
+                 loss_function="BCE")
 
 	# Test _sigmoid
 	#print(my_nn._sigmoid(np.array([0, 0, 0])))
 	# Test _relu
 	#print(my_nn._relu(np.array([0, -9, 10, 5.6])))
 	# Test _binary_cross_entropy
-	print(my_nn._binary_cross_entropy(np.array([1,0]), np.array([0,1])))
+	#print(my_nn._binary_cross_entropy(np.array([1,0]), np.array([0,1])))
 	# Test _mean_squared_error
 	#print(my_nn._mean_squared_error(np.array([0, 1]), np.array([1, 0])))
 
