@@ -117,9 +117,11 @@ class NeuralNetwork:
 		# Calculate activation matrix
 		assert (activation in ["sigmoid", "relu"]), "Activation function unrecognized"
 		if activation == "sigmoid":
-			return (self._sigmoid(Z_curr), Z_curr)
+			A_curr = self._sigmoid(Z_curr)
+			return (A_curr, Z_curr)
 		else: # activation == "relu" 
-			return(self._relu(Z_curr), Z_curr)
+			A_curr = self._relu(Z_curr)
+			return (A_curr, Z_curr)
 
 
 
@@ -198,7 +200,29 @@ class NeuralNetwork:
 			db_curr: ArrayLike
 				Partial derivative of loss function with respect to current layer bias matrix.
 		"""
-		pass
+
+		dL_dAcurr = dA_curr
+		dL_dZcurr = []
+
+		assert (activation_curr in ["sigmoid", "relu"]), "Activation function unrecognized"
+		if activation_curr == "sigmoid":
+			dL_dZcurr = self._sigmoid_backprop(dL_dAcurr, Z_curr)
+		else: # activation == "relu" 
+			dL_dZcurr = self._relu_backprop(dL_dAcurr, Z_curr)
+
+		num_datapoints = dL_dZcurr.shape[0]
+
+		dL_dAprev = dL_dZcurr @ W_curr							# n X input
+		dL_dWcurr = dL_dZcurr.T @ A_prev						# output X input
+		dL_dbcurr = dL_dZcurr.T @ np.ones((num_datapoints, 1))	# output X 1
+
+		dA_prev = dL_dAprev
+		dW_curr = dL_dWcurr
+		db_curr = dL_dbcurr
+
+		return(dA_prev, dW_curr, db_curr)
+
+		
 
 	def backprop(self, y: ArrayLike, y_hat: ArrayLike, cache: Dict[str, ArrayLike]):
 		"""
@@ -330,6 +354,9 @@ class NeuralNetwork:
 
 		return dL_dZ
 
+
+
+
 	def _relu_backprop(self, dA: ArrayLike, Z: ArrayLike) -> ArrayLike:
 		"""
 		ReLU derivative for backprop.
@@ -344,7 +371,16 @@ class NeuralNetwork:
 			dZ: ArrayLike
 				Partial derivative of current layer Z matrix.
 		"""
-		pass
+		dL_dA = dA
+		dA_dZ = Z
+		dA_dZ[dA_dZ <= 0] = 0 # Technically, the derivative if Z==0 is undefined.
+		dA_dZ[dA_dZ > 0] = 1
+		dL_dZ = dL_dA * dA_dZ
+
+		return dL_dZ
+
+
+
 
 	def _binary_cross_entropy(self, y: ArrayLike, y_hat: ArrayLike) -> float:
 		"""

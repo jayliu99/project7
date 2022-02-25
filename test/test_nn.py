@@ -85,7 +85,37 @@ def test_single_forward():
 
 
 def test_single_backprop():
-	pass
+	"""
+	Check that a single backward pass performs as expected.
+	"""
+
+	# Set fixed input, weights, and biases
+	test_W_curr = np.array([[1, 2, 3, 4],
+							[3, 4, 5, 6]])
+	test_b_curr = np.array([[2], [2]])
+	test_Z_curr = np.array([[32, 52], [32, 52]])
+	test_A_prev = np.array([[1, 2, 3, 4],
+							 [1, 2, 3, 4]])
+	test_dA_curr = np.array([[1, 3], [2, 4]])
+	test_act_curr = "relu"
+
+	# Run single backward pass (with relu activation)
+	test_dA_prev, test_dW_curr, test_db_curr = my_nn._single_backprop(test_W_curr, 
+											test_b_curr, 
+											test_Z_curr, 
+											test_A_prev, 
+											test_dA_curr,
+											test_act_curr)
+	expected_dA_prev = np.array([[10, 14, 18, 22], [14, 20, 26, 32]])
+	expected_dW_curr = np.array([[3, 6, 9, 12], [7, 14, 21, 28]])
+	expected_db_curr = np.array([[3], [7]])
+
+
+	# Evaluate if results were as expected
+	assert(np.array_equal(test_dA_prev, expected_dA_prev))
+	assert(np.array_equal(test_dW_curr, expected_dW_curr))
+	assert(np.array_equal(test_db_curr, expected_db_curr))
+
 
 
 def test_predict():
