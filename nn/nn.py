@@ -112,6 +112,7 @@ class NeuralNetwork:
 			Z_curr: ArrayLikelo
 				Current layer linear transformed matrix.
 		"""
+
 		Z_curr = A_prev @ W_curr.T + b_curr.T
 
 		# Calculate activation matrix
@@ -144,6 +145,7 @@ class NeuralNetwork:
 		cache = {}
 
 		# Intialize NN input
+		cache['A0'] = X
 		A_prev = X
 
 		# Move through layers of NN
@@ -152,7 +154,8 @@ class NeuralNetwork:
 			W_curr = self._param_dict['W' + str(layer_idx)]
 			b_curr = self._param_dict['b' + str(layer_idx)]
 			activation = layer["activation"]
-			Z_curr, A_curr = self._single_forward(W_curr, b_curr, A_prev, activation)
+
+			A_curr, Z_curr = self._single_forward(W_curr, b_curr, A_prev, activation)
 
 			# Store Z and A matrices
 			cache['Z' + str(layer_idx)] = Z_curr
@@ -224,7 +227,7 @@ class NeuralNetwork:
 
 		
 
-	def backprop(self, y: ArrayLike, y_hat: ArrayLike, cache: Dict[str, ArrayLike]):
+	def backprop(self, y: ArrayLike, y_hat: ArrayLike, cache: Dict[str, ArrayLike]) -> Dict[str, ArrayLike]:
 		"""
 		This method is responsible for the backprop of the whole fully connected neural network.
 
@@ -241,7 +244,42 @@ class NeuralNetwork:
 			grad_dict: Dict[str, ArrayLike]
 				Dictionary containing the gradient information from this pass of backprop.
 		"""
-		pass
+		# Intialize dictionary to store gradients
+		grad_dict = {}
+
+		# Intialize first derivative (dL/dy_hat)
+		dL_dy_hat = []
+		assert (self._loss_func in ["mse", "bce"]), "Loss function unrecognized"
+		if self._loss_func == "mse":
+			dL_dy_hat = self._mean_squared_error_backprop(y, y_hat)
+		else: # self._loss_func == "bce"
+			dL_dy_hat = self._binary_cross_entropy_backprop(y, y_hat)
+
+		dA_curr = dL_dy_hat
+
+		# Move through layers of NN, backwards
+		for idx, layer in reversed(list(enumerate(self.arch))):
+			layer_idx = idx + 1
+			W_curr = self._param_dict['W' + str(layer_idx)]
+			b_curr = self._param_dict['b' + str(layer_idx)]
+			Z_curr = cache['Z' + str(layer_idx)]
+			A_prev = cache['A' + str(layer_idx-1)]
+			activation_curr = layer["activation"]
+
+			dA_prev, dW_curr, db_curr = self._single_backprop(W_curr, b_curr, Z_curr, A_prev, dA_curr, activation_curr)
+
+			# Store gradient matrices
+			grad_dict['dW' + str(layer_idx)] = dW_curr
+			grad_dict['db' + str(layer_idx)] = db_curr
+
+			# Set up dL/dA for next layer
+			dA_curr = dA_prev
+
+		# Return gradient dictionary
+		return grad_dict
+
+
+
 
 	def _update_params(self, grad_dict: Dict[str, ArrayLike]):
 		"""
@@ -255,7 +293,25 @@ class NeuralNetwork:
 		Returns:
 			None
 		"""
-		pass
+		# Update weights and biases for each layer of NN
+		# Update strategy: gradient descent
+		for idx, layer in enumerate(self.arch):
+			layer_idx = idx + 1
+			W_prev = self._param_dict['W' + str(layer_idx)]
+			b_prev = self._param_dict['b' + str(layer_idx)]
+			dW = grad_dict['dW' + str(layer_idx)]
+			db = grad_dict['db' + str(layer_idx)]
+			W_new = W_prev - self._lr * dW 
+			b_new = b_prev - self._lr * db 
+
+			self._param_dict['W' + str(layer_idx)] = W_new
+			self._param_dict['b' + str(layer_idx)] = b_new
+
+		return
+
+
+
+
 
 	def fit(self,
 			X_train: ArrayLike,
@@ -281,7 +337,86 @@ class NeuralNetwork:
 			per_epoch_loss_val: List[float]
 				List of per epoch loss for validation set.
 		"""
-		pass
+		# Initializing lists to hold loss record
+		per_epoch_loss_train = []
+		per_epoch_loss_val = []
+
+		# Train (1 epoch = 1 full forward pass + 1 full backward pass)
+		for i in range(self._epochs):
+
+			# Shuffle the training data for each epoch of training
+			shuffle_arr = np.concatenate([X_train, y_train], axis=1)
+
+			# In place shuffle
+			np.random.shuffle(shuffle_arr)
+			X_train = shuffle_arr[:, :-1]
+			y_train = shuffle_arr[:, -1].flatten()
+			num_batches = np.ceil(X_train.shape[0]/self._batch_size)
+			X_batch = np.array_split(X_train, num_batches)
+			y_batch = np.array_split(y_train, num_batches)
+
+			loss_history_train = []
+			loss_history_val = []
+
+			# Iterating through batches (full for loop is one epoch of training)
+			for X_train, y_train in zip(X_batch, y_batch):
+
+				# print("epoch num", i+1)
+				# print("X_train: ", X_train)
+				# print("y_train: ", y_train)
+				# print("X_val:", X_val)
+				# print("y_val:", y_val)
+
+				# Forward pass
+				output, cache = self.forward(X_train)
+
+				# print(output)
+				# print (cache)
+
+				# Calculate training loss
+				assert (self._loss_func in ["mse", "bce"]), "Loss function unrecognized"
+				if self._loss_func == "mse":
+					loss_train = self._mean_squared_error(y_train, output)
+				else: # self._loss_func == "bce"
+					loss_train = self._binary_cross_entropy(y_train, output)
+
+				# print("Loss:", loss_train)
+
+				# Add current training loss to loss history record
+				loss_history_train.append(loss_train)
+
+				# Backward pass
+				grad_dict = self.backprop(y_train, output, cache)
+
+				# print(grad_dict)
+
+				# Update parameters
+				self._update_params(grad_dict)
+
+				# print(self._param_dict)
+
+				# Validation pass
+				output_val = self.predict(X_val)
+
+				# print(output_val)
+
+				# Calculate validation loss
+				assert (self._loss_func in ["mse", "bce"]), "Loss function unrecognized"
+				if self._loss_func == "mse":
+					loss_val = self._mean_squared_error(y_val, output_val)
+				else: # self._loss_func == "bce"
+					loss_val = self._binary_cross_entropy(y_val, output_val)
+	
+				# Add current validation loss to loss history record
+				loss_history_val.append(loss_val)
+
+			# Record average losses for the epoch
+			per_epoch_loss_train.append(sum(loss_history_train)/len(loss_history_train))
+			per_epoch_loss_val.append(sum(loss_history_val)/len(loss_history_val))
+
+		return per_epoch_loss_train, per_epoch_loss_val
+
+
 
 	def predict(self, X: ArrayLike) -> ArrayLike:
 		"""
@@ -295,7 +430,11 @@ class NeuralNetwork:
 			y_hat: ArrayLike
 				Prediction from the model.
 		"""
-		pass
+		y_hat, cache = self.forward(X)
+		return y_hat
+
+
+
 
 	def _sigmoid(self, Z: ArrayLike) -> ArrayLike:
 		"""

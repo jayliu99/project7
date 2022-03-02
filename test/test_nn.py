@@ -15,9 +15,9 @@ arch = [{'input_dim': 4, 'output_dim': 2, 'activation': "relu"}, {'input_dim': 2
 my_nn = NeuralNetwork(arch, 
 				 lr=0.5,
 				 seed=3,
-				 batch_size=5,
-				 epochs=5,
-				 loss_function="BCE")
+				 batch_size=1,
+				 epochs=1,
+				 loss_function="mse")
 
 
 def test_forward():
@@ -43,6 +43,7 @@ def test_forward():
 	# Define expected output
 	expected_output = np.array([[225]]) 
 	expected_cache = {}
+	expected_cache['A0'] = test_A_prev
 	expected_cache['Z1'] = np.array([[32, 52]])
 	expected_cache['A1'] = np.array([[32, 52]])
 	expected_cache['Z2'] = np.array([[225]]) 
@@ -119,7 +120,46 @@ def test_single_backprop():
 
 
 def test_predict():
-	pass
+	"""
+	Check that the NN prediction performs as expected.
+	Unlike test_forward, an entire NN will be set up and trained on a toy dataset.
+	The predictions following training will be assessed.
+	"""
+	# Create a dummy NN
+	arch = [{'input_dim': 4, 'output_dim': 2, 'activation': "relu"}, {'input_dim': 2, 'output_dim': 1, 'activation': "relu"}]
+	my_nn = NeuralNetwork(arch, 
+					 lr=0.5,
+					 seed=3,
+					 batch_size=1,
+					 epochs=1,
+					 loss_function="mse")
+
+	# Fix initial weights and biases
+	test_params = {}
+	test_params['W1'] = np.array([[1, 2, 3, 4],
+								 [3, 4, 5, 6]])
+	test_params['b1'] = np.array([[2],[2]])
+	test_params['W2'] = np.array([[2, 3]])
+	test_params['b2'] = np.array([[5]])
+	my_nn._set_params_for_test(test_params)
+
+	# Initialize toy dataset
+	test_X_train = np.array([[1, 2, 3, 4]])
+	test_Y_train = np.array([[1]])
+	test_X_val = np.array([[1, 2, 3, 4]])
+	test_Y_val = np.array([[1]])
+
+	# Fit NN
+	per_epoch_loss_train, per_epoch_loss_val = my_nn.fit(test_X_train, test_Y_train, test_X_val, test_Y_val)
+
+	# Make final predictions 
+	test_predict = my_nn.predict(test_X_train)
+
+	# Compare expected to actual predictions
+	expected_predict = np.array([[0]])
+	assert(per_epoch_loss_train[0] == 50176)
+	assert(np.array_equal(test_predict, expected_predict))
+
 
 
 def test_binary_cross_entropy():
