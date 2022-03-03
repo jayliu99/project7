@@ -93,6 +93,9 @@ def sample_seqs(seqs: List[str], labels: List[bool], size:int) -> Tuple[List[str
 		sampled_labels: List[bool]
 			List of labels for the sampled sequences
 	"""
+	# Set seed 
+	random.seed = 25
+	
 	# Segregate postive and negative data
 	labeled_seq = list(zip(seqs, labels))
 	positive_ex = [item[0] for item in labeled_seq if item[1]==True]

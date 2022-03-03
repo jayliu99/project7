@@ -343,14 +343,20 @@ class NeuralNetwork:
 
 		# Train (1 epoch = 1 full forward pass + 1 full backward pass)
 		for i in range(self._epochs):
+			print("Training epoch ", i+1, "...")
 
 			# Shuffle the training data for each epoch of training
 			shuffle_arr = np.concatenate([X_train, y_train], axis=1)
-
-			# In place shuffle
 			np.random.shuffle(shuffle_arr)
-			X_train = shuffle_arr[:, :-1]
-			y_train = shuffle_arr[:, -1].flatten()
+
+			# Calculate how many dimensions y_train had
+			y_train_dims = y_train.shape[1]
+			shuffle_arr_dims = shuffle_arr.shape[1]
+			cutoff_value = shuffle_arr_dims - y_train_dims
+
+			# Recover X and y batches
+			X_train = shuffle_arr[:, :cutoff_value]
+			y_train = shuffle_arr[:, cutoff_value:]
 			num_batches = np.ceil(X_train.shape[0]/self._batch_size)
 			X_batch = np.array_split(X_train, num_batches)
 			y_batch = np.array_split(y_train, num_batches)
@@ -361,17 +367,9 @@ class NeuralNetwork:
 			# Iterating through batches (full for loop is one epoch of training)
 			for X_train, y_train in zip(X_batch, y_batch):
 
-				# print("epoch num", i+1)
-				# print("X_train: ", X_train)
-				# print("y_train: ", y_train)
-				# print("X_val:", X_val)
-				# print("y_val:", y_val)
-
 				# Forward pass
 				output, cache = self.forward(X_train)
 
-				# print(output)
-				# print (cache)
 
 				# Calculate training loss
 				assert (self._loss_func in ["mse", "bce"]), "Loss function unrecognized"
@@ -380,7 +378,6 @@ class NeuralNetwork:
 				else: # self._loss_func == "bce"
 					loss_train = self._binary_cross_entropy(y_train, output)
 
-				# print("Loss:", loss_train)
 
 				# Add current training loss to loss history record
 				loss_history_train.append(loss_train)
@@ -388,17 +385,11 @@ class NeuralNetwork:
 				# Backward pass
 				grad_dict = self.backprop(y_train, output, cache)
 
-				# print(grad_dict)
-
 				# Update parameters
 				self._update_params(grad_dict)
 
-				# print(self._param_dict)
-
 				# Validation pass
 				output_val = self.predict(X_val)
-
-				# print(output_val)
 
 				# Calculate validation loss
 				assert (self._loss_func in ["mse", "bce"]), "Loss function unrecognized"
@@ -414,6 +405,9 @@ class NeuralNetwork:
 			per_epoch_loss_train.append(sum(loss_history_train)/len(loss_history_train))
 			per_epoch_loss_val.append(sum(loss_history_val)/len(loss_history_val))
 
+			print("Epoch ", i+1, " done!")
+
+		print("Training done!")
 		return per_epoch_loss_train, per_epoch_loss_val
 
 
